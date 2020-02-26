@@ -6,9 +6,17 @@ from scipy.interpolate import interp1d
 
 
 class TimeSeries(object):
-    def __init__(self,tvec,xvec,label='',interp='linear'):
-        self.t=tvec
-        self.v=xvec
+    def __init__(self,v,t,label='',interp='linear'):
+        """
+        Arbitrary time series with irregular sampling
+
+        interp : interpolation mode
+                 * nearest: return nearest sample
+                 * linear: interpolate linearly when a value 
+                   is requested in between samples
+        """
+        self.t=np.asarray(t)
+        self.v=np.asarray(v)
         self.label=label
         self.interp_mode=interp
 
@@ -22,10 +30,33 @@ class TimeSeries(object):
                     except TypeError:
                         ret.append(self[ii])
             else:
-                ret = self._values_in_range(key[0],key[1]) 
+                if type(key) == tuple:
+                    ret = self._values_in_range(key[0],key[1]) 
+                else:
+                    ret = self.value_at_time(key)
             return ret
         else:
-            return self.get_value_at_time(key)
+            return self.value_at_time(key)
+
+    @property
+    def iloc(self):
+        return self.v
+
+    def left_right_indices(self,time):
+        if time in self.t:
+            idx = np.flatnonzero(self.t==time)[0]
+            return np.array([idx,idx])
+        idx = np.flatnonzero(self.t - time >= 0)
+        if len(idx) <= 0:
+            return np.array([len(self.t),None])
+        elif idx[0] == 0:
+            return np.array([None,0])
+        else:
+            return np.array([idx[0]-1,idx[0]])
+
+    def nearest_sample_time(self, time):
+        idx = np.min(np.abs(time-self.t))
+        return self.t[idx]
         
     def value_at_time(self,t,interp='linear'):
         try:
@@ -50,6 +81,14 @@ class TimeSeries(object):
         xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
         return np.mean(xv)
     
+    def max(self, from_time=None, to_time=None):
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
+        return np.max(xv)
+    
+    def min(self, from_time=None, to_time=None):
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
+        return np.min(xv)
+
     def apply(self, fun, from_time=None, to_time=None):
         xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
         return fun(xv)
@@ -63,7 +102,8 @@ class TimeSeries(object):
         return xt[np.argmax(xv)]
 
     def changepoints(self,n=None,order=0,mindist=0,from_time=None, to_time=None ):
-        xt,xv = self.times_values_in_region(from_time=from_time, to_time=to_time)
+        from .features import changepoints
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
         if order == 0:
             xv=np.cumsum(xv)
         elif order>1:
@@ -76,16 +116,16 @@ class TimeSeries(object):
     def window_filter(self, func, twind=0.0):
         ret = np.zeros_like(self.v)
         for ii, (t,x) in enumerate(zip(self.t, self.v)):
-            idx = (self.t>t-twind) & (self.t<t+twind)
+            idx = (self.t>t-twind/2) & (self.t<t+twind/2)
             ret[ii] = func(self.v[idx])
-        return TimeSeries(self.t,ret)
+        return self.__class__(t=self.t,v=ret, label=self.label+' (filt.)')
 
     def _create_interpolator(self):
         if len(self.v.shape)==1:
             self.interpolator = interp1d(self.t,self.v,kind=self.interp_mode)
         else:
             self.interpolator = []
-            for ii in range(self.xvec.shape[1]):
+            for ii in range(self.v.shape[1]):
                 self.interpolator.append(interp1d(self.t,self.v[:,ii],kind=self.interp_mode))
         
     def _values_in_range(self, from_time=None, to_time=None):
@@ -95,8 +135,7 @@ class TimeSeries(object):
             to_time=np.max(self.t)
         idx = ((self.t>=from_time) &
                (self.t<=to_time))
-        xvec = self.get_values()
-        return xvec[idx]
+        return self.v[idx]
 
     def times_values_in_range(self, from_time=None, to_time=None):
         if from_time is None:
@@ -106,9 +145,20 @@ class TimeSeries(object):
         idx = ((self.t>=from_time) &
                (self.t<=to_time))
         xvec = self.v
-        return self.tvec[idx], xvec[idx]
+        return self.t[idx], xvec[idx]
 
-    def crossing_times(self,val,index=None,from_time=None,to_time=None,interpolated=False):
+    def reverse_interpolate(self,val,indices,interp="linear"):
+        """
+        Finds the interpolated time corresponding to value val between indices
+        """
+        if interp == 'linear':
+            tv = self.t[indices]
+            xv = self.v[indices]
+            return (val-xv[0])/(xv[1]-xv[0])*(tv[1]-tv[0])+tv[0]
+        
+        
+
+    def crossing_times(self,val,index=None,from_time=None,to_time=None,interp=None):
         tvec,xvec = self.times_values_in_range(from_time=from_time,to_time=to_time)
         if index:
             xvec = xvec[:,index]
@@ -117,18 +167,16 @@ class TimeSeries(object):
 
         crossing_mask = (xvec[:-1]>=val) & (xvec[1:]<val)
         crossing_down = np.flatnonzero(crossing_mask)
+        if interp is None:
+            interp = self.interp_mode
 
-        if interpolated:
+        if interp == 'linear':
             tup = np.zeros(len(crossing_up))
             for ii,cu in enumerate(crossing_up):
-                tv = tvec[cu:cu+2]
-                xv = xvec[cu:cu+2]
-                tup[ii] = (val-xv[0])/(xv[1]-xv[0])*(tv[1]-tv[0])+tv[0]
+                tup[ii] = self.reverse_interpolate(val,[cu,cu+1])
             tdn = np.zeros(len(crossing_down))
             for ii,cu in enumerate(crossing_down):
-                tv = tvec[cu:cu+2]
-                xv = xvec[cu:cu+2]
-                tdn[ii] = (val-xv[0])/(xv[1]-xv[0])*(tv[1]-tv[0])+tv[0]
+                tdn[ii] = self.reverse_interpolate(val,[cu,cu+1])
             #tv = tvec[crossing_down:crossing_down+2]
             #xv = xvec[crossing_down:crossing_down+2]
             #tdn = (val-xv[0])/(xv[1]-xv[0])*(tv[1]-tv[0])
@@ -139,12 +187,12 @@ class TimeSeries(object):
 
     def midpoint_value(self, percentile=5, from_time=None, to_time=None):
         xlow = self.percentile(percentile, from_time, to_time) 
-        xhi  = self.percentile(1-percentile, from_time, to_time) 
+        xhi  = self.percentile(100-percentile, from_time, to_time) 
         return (xhi+xlow)/2
 
-    def start_end_midpoint_crossings(self, percentiles=5, from_time=None, to_time=None):
-        val = self.get_midpoint_value(percentiles=percentiles)
-        x_up, x_down = self.get_crossing_times(val, from_time=from_time, to_time=to_time)
+    def start_end_midpoint_crossings(self, percentile=5, from_time=None, to_time=None):
+        val = self.midpoint_value(percentile=percentile)
+        x_up, x_down = self.crossing_times(val, from_time=from_time, to_time=to_time)
         if (len(x_up)>1) | (len(x_down)>1):
             logging.warn('multiple crossings found')
         return x_up[0],x_down[-1]
@@ -161,15 +209,16 @@ class TimeSeries(object):
             fig = ax.figure
         except KeyError:
             fig,ax = pl.subplots(1)
-        ax.plot(self.t,self.v,**kwargs)
+        l = kwargs.pop('label',self.label)
+        ax.plot(self.t,self.v,label=l,**kwargs)
         return fig,ax
 
-    def to_sampled_timeseries(self, dt=None):
+    def as_sampled_timeseries(self, dt=None):
         if dt is None:
-            dt = np.median(np.diff(self.tvec))
-        tst = np.min(self.tvec)
-        tend = np.max(self.tvec)
+            dt = np.median(np.diff(self.t))
+        tst = np.min(self.t)
+        tend = np.max(self.t)
         tvec = np.arange(tst,tend,dt)
         xvec = self.value_at_time(tvec)
-        from .sampled_times_series import SampledTimeSeries 
-        return SampledTimeSeries(tvec,xvec)
+        from .sampled_time_series import SampledTimeSeries 
+        return SampledTimeSeries(xvec,t=self.t,label=self.label+' (samp.)')
