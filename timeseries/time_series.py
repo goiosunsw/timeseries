@@ -89,6 +89,10 @@ class TimeSeries(object):
         xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
         return np.min(xv)
 
+    def std(self, from_time=None, to_time=None):
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
+        return np.std(xv)
+
     def apply(self, fun, from_time=None, to_time=None):
         xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
         return fun(xv)
