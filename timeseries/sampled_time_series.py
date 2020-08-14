@@ -31,15 +31,16 @@ class SampledTimeSeries(TimeSeries):
         Return the finite difference of order n of the time series
         """
         t = self.t
+        dt = self.dt
         if dist==1:
-            dv = np.diff(self.v,ord)
+            dv = np.diff(self.v,ord)/(dt**ord)
         
             t = (t[:-ord]+t[ord:])/2
         else:
             dv = self.v
             for ii in range(ord):
-                dv = dv[dist:]-dv[:-dist]
-                t = (t[:-ord]+t[ord:])/2
+                dv = (dv[dist:]-dv[:-dist])/(dt*dist)
+                t = (t[:-dist]+t[dist:])/2
         return SampledTimeSeries(t=t,v=dv, label= self.label+' (diff{})'.format(ord))
 
     def peaks(self,twind=0.0,sign=1,**kwargs):

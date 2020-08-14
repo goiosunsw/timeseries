@@ -38,6 +38,40 @@ class TimeSeries(object):
         else:
             return self.value_at_time(key)
 
+    def _join_times(self, t2):
+        return np.unique(np.concatenate((self.t,t2)))
+
+    def __add__(self, other):
+        if isinstance(other, TimeSeries):
+            new_times = self._join_times(other.t)
+            new_vals = self[new_times] + other[new_times]
+            return __class__(new_vals, new_times)
+        else:
+            return __class__(self.v + other, self.t)
+
+    def __sub__(self, other):
+        if isinstance(other, TimeSeries):
+            new_times = self._join_times(other.t)
+            new_vals = self[new_times] - other[new_times]
+            return __class__(new_vals, new_times)
+        else:
+            return __class__(self.v - other, self.t)
+
+    def __mul__(self, other):
+        if isinstance(other, TimeSeries):
+            new_times = self._join_times(other.t)
+            new_vals = self[new_times] * other[new_times]
+            return __class__(new_vals, new_times)
+        else:
+            return __class__(self.v * other, self.t)
+
+    def __truediv__(self, other):
+        if isinstance(other, TimeSeries):
+            new_times = self._join_times(other.t)
+            new_vals = self[new_times] / other[new_times]
+            return __class__(new_vals, new_times)
+        else:
+            return __class__(self.v / other, self.t)
     @property
     def iloc(self):
         return self.v
@@ -95,7 +129,7 @@ class TimeSeries(object):
 
     def apply(self, fun, from_time=None, to_time=None):
         xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
-        return fun(xv)
+        return self.__class__(fun(xv),xt)
 
     def min_time(self, from_time=None, to_time=None):
         xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
