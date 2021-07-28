@@ -45,33 +45,33 @@ class TimeSeries(object):
         if isinstance(other, TimeSeries):
             new_times = self._join_times(other.t)
             new_vals = self[new_times] + other[new_times]
-            return __class__(new_vals, new_times)
+            return self.__class__(new_vals, new_times)
         else:
-            return __class__(self.v + other, self.t)
+            return self.__class__(self.v + other, self.t)
 
     def __sub__(self, other):
         if isinstance(other, TimeSeries):
             new_times = self._join_times(other.t)
             new_vals = self[new_times] - other[new_times]
-            return __class__(new_vals, new_times)
+            return self.__class__(new_vals, new_times)
         else:
-            return __class__(self.v - other, self.t)
+            return self.__class__(self.v - other, self.t)
 
     def __mul__(self, other):
         if isinstance(other, TimeSeries):
             new_times = self._join_times(other.t)
             new_vals = self[new_times] * other[new_times]
-            return __class__(new_vals, new_times)
+            return self.__class__(new_vals, new_times)
         else:
-            return __class__(self.v * other, self.t)
+            return self.__class__(self.v * other, self.t)
 
     def __truediv__(self, other):
         if isinstance(other, TimeSeries):
             new_times = self._join_times(other.t)
             new_vals = self[new_times] / other[new_times]
-            return __class__(new_vals, new_times)
+            return self.__class__(new_vals, new_times)
         else:
-            return __class__(self.v / other, self.t)
+            return self.__class__(self.v / other, self.t)
     @property
     def iloc(self):
         return self.v
