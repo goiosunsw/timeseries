@@ -20,6 +20,10 @@ class TimeSeries(object):
         self.label=label
         self.interp_mode=interp
 
+    @property
+    def dtype(self):
+        return self.v.dtype
+
     def __getitem__(self,key):
         if hasattr(key, "__iter__"):
             if hasattr(key[0], "__iter__"):
@@ -72,6 +76,7 @@ class TimeSeries(object):
             return self.__class__(new_vals, new_times)
         else:
             return self.__class__(self.v / other, self.t)
+
     @property
     def iloc(self):
         return self.v

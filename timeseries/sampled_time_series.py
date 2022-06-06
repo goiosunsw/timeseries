@@ -17,7 +17,7 @@ class SampledTimeSeries(TimeSeries):
             self.dt = np.median(tdiff)
             self.t_start = np.min(t)
             maxerr = np.max(np.abs(self.t-t))
-            logging.info("Maximum error in time vector is {} ({}%%)".format(maxerr,maxerr/self.dt))
+            #logging.info("Maximum error in time vector is {} ({}%%)".format(maxerr,maxerr/self.dt))
             
         self.label=label
         self.interp_mode=interp
