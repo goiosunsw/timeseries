@@ -165,11 +165,11 @@ class TimeSeries(object):
 
     def _create_interpolator(self):
         if len(self.v.shape)==1:
-            self.interpolator = interp1d(self.t,self.v,kind=self.interp_mode)
+            self.interpolator = interp1d(self.t,self.v,kind=self.interp_mode, bounds_error=False)
         else:
             self.interpolator = []
             for ii in range(self.v.shape[1]):
-                self.interpolator.append(interp1d(self.t,self.v[:,ii],kind=self.interp_mode))
+                self.interpolator.append(interp1d(self.t,self.v[:,ii],kind=self.interp_mode, bounds_error=False))
         
     def _values_in_range(self, from_time=None, to_time=None):
         if from_time is None:

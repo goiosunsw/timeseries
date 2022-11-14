@@ -50,6 +50,13 @@ class SampledTimeSeries(TimeSeries):
         return self.t[peak_idx], properties
         
 
+    def _join_times(self,t2):
+        tmin = max(np.min(self.t),np.min(t2))
+        tmax = min(np.max(self.t),np.max(t2))
+        dt2 = np.median(np.diff(t2))
+        dt = np.min(self.dt,dt2)
+        return np.arange(tmin,tmax,dt)
+
     def _padding(self,n):
         """
         return n extrapolated samples at end if n>0, or 
