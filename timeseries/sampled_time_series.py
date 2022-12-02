@@ -164,9 +164,12 @@ class SampledTimeSeries(TimeSeries):
         idx = self.range_to_slice(from_time, to_time)
         return self.v[idx]
 
-    def times_values_in_range(self, from_time=None, to_time=None):
+    def times_values_in_range(self, from_time=None, to_time=None, nmin=0):
         idx = self.range_to_slice(from_time, to_time)
-        return self.t[idx], self.v[idx]
+        if idx.stop <= idx.start:
+            return super().times_values_in_range(from_time=from_time, to_time=to_time, nmin=nmin)
+        else:
+            return self.t[idx], self.v[idx]
 
     def resample(self, fact=1):
         x = self.v

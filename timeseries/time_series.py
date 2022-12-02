@@ -113,23 +113,23 @@ class TimeSeries(object):
             return x
                 
     def percentile(self, val, from_time=None, to_time=None):
-        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time, nmin=3)
         return np.percentile(xv,val)
 
     def mean(self, from_time=None, to_time=None):
-        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time, nmin=3)
         return np.mean(xv)
     
     def max(self, from_time=None, to_time=None):
-        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time, nmin=3)
         return np.max(xv)
     
     def min(self, from_time=None, to_time=None):
-        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time, nmin=3)
         return np.min(xv)
 
     def std(self, from_time=None, to_time=None):
-        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time, nmin=3)
         return np.std(xv)
 
     def apply(self, fun, from_time=None, to_time=None):
@@ -137,11 +137,11 @@ class TimeSeries(object):
         return self.__class__(fun(xv),xt)
 
     def min_time(self, from_time=None, to_time=None):
-        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time, nmin=3)
         return xt[np.argmin(xv)]
 
     def max_time(self, from_time=None, to_time=None):
-        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time)
+        xt,xv = self.times_values_in_range(from_time=from_time, to_time=to_time, nmin=3)
         return xt[np.argmax(xv)]
 
     def changepoints(self,n=None,order=0,mindist=0,from_time=None, to_time=None ):
@@ -180,15 +180,33 @@ class TimeSeries(object):
                (self.t<=to_time))
         return self.v[idx]
 
-    def times_values_in_range(self, from_time=None, to_time=None):
+    def times_values_in_range(self, from_time=None, to_time=None, nmin=0):
+        """
+        Return times and values in a time interval
+
+        Args:
+            from_time=None (undefined): Starting time
+            to_time=None (undefined): Ending time
+            nmin=0 (undefined): Minimum number of points
+
+        If there aren't any samples in the time range, using nmin uses interpolation
+        to calculate nmin samples within the range
+        """
+        
         if from_time is None:
             from_time=np.min(self.t)
         if to_time is None:
             to_time=np.max(self.t)
         idx = ((self.t>=from_time) &
                (self.t<=to_time))
-        xvec = self.v
-        return self.t[idx], xvec[idx]
+        if sum(idx)>=nmin:
+            xvec = self.v
+            t = self.t[idx]
+            v = xvec[idx]
+        else:
+            t = np.linspace(from_time, to_time, nmin)
+            v = self[t]
+        return t, v
 
     def reverse_interpolate(self,val,indices,interp="linear"):
         """
