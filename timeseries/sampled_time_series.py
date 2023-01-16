@@ -54,7 +54,7 @@ class SampledTimeSeries(TimeSeries):
         tmin = max(np.min(self.t),np.min(t2))
         tmax = min(np.max(self.t),np.max(t2))
         dt2 = np.median(np.diff(t2))
-        dt = np.min(self.dt,dt2)
+        dt = min(self.dt,dt2)
         return np.arange(tmin,tmax,dt)
 
     def _padding(self,n):
